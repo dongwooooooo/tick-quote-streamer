@@ -1,0 +1,120 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Cursor
+.cursor/
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+
+# Gradle
+.gradle/
+build/
+out/
+**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# Spring Boot
+*.log
+logs/
+spring.log
+
+# Docker
+docker-compose.override.yml
+
+# IntelliJ IDEA
+*.iml
+*.ipr
+*.iws
+.idea/
+out/
+
+# Eclipse
+.metadata
+bin/
+tmp/
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.settings/
+.loadpath
+.recommenders
+.project
+.classpath
+.c9/
+*.launch
+.externalToolBuilders/
+*.launch
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Node.js (if any frontend added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Backup files
+*.backup
+*.bak
+
+# Application specific
+application-local.yml
+application-dev.yml
+application-prod.yml
