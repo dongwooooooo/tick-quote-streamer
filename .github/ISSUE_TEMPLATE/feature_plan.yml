@@ -1,8 +1,8 @@
-name: 기능 구현 계획
-about: 새로운 기능 구현 목표와 계획을 작성합니다.
+name: "기능 구현 계획"
+about: "새로운 기능 구현 목표와 계획을 작성합니다."
 title: "[PLAN] "
-labels: plan
-assignees: ''
+labels: "plan"
+assignees: ""
 
 body:
   - type: markdown
@@ -10,7 +10,7 @@ body:
       value: "## 새로운 기능 구현을 위한 계획을 세워봅시다! \n아래 양식에 맞춰 기능의 목적과 계획을 상세하게 작성해주세요."
 
   - type: textarea
-    id: purpose
+    id: "purpose"
     attributes:
       label: "구현 목적"
       description: "이 기능이 해결하려는 문제 또는 달성하고자 하는 목표는 무엇인가요?"
@@ -18,7 +18,7 @@ body:
       required: true
 
   - type: textarea
-    id: details
+    id: "details"
     attributes:
       label: "상세 내용"
       description: "구현하려는 기능에 대해 최대한 상세하게 설명해주세요. (예시: UI/UX, API 명세)"
@@ -26,7 +26,7 @@ body:
       required: true
 
   - type: checkboxes
-    id: tasks
+    id: "tasks"
     attributes:
       label: "할 일 (Task List)"
       description: "기능을 구현하기 위해 필요한 작업들을 체크리스트로 관리하세요."
@@ -40,14 +40,14 @@ body:
       required: true
 
   - type: input
-    id: deadline
+    id: "deadline"
     attributes:
-      label: "🗓️ 마감일"
+      label: "마감일"
       description: "예상되는 마감일이 있다면 작성해주세요."
       placeholder: "YYYY-MM-DD"
 
   - type: textarea
-    id: reference
+    id: "reference"
     attributes:
       label: "💡 참고 자료"
       description: "기능 구현에 필요한 참고 자료나 링크를 기록해두세요."
