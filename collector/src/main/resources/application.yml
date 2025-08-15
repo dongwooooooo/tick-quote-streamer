@@ -1,0 +1,40 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: quote-stream-collector
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      enable-idempotence: true
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      compression-type: snappy
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.example.collector: DEBUG
+    org.springframework.kafka: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+kis:
+  websocket:
+    url: ${KIS_WEBSOCKET_URL:ws://localhost:8090/kis-mock}
+  app:
+    key: ${KIS_APP_KEY:test_app_key}
+    secret: ${KIS_APP_SECRET:test_app_secret}
