@@ -34,15 +34,10 @@ body:
       description: 기능을 구현하기 위해 필요한 작업들을 체크리스트로 관리하세요.
       options:
         - label: API 설계 및 구현
-          required: false
         - label: 데이터베이스 스키마 설계
-          required: false
         - label: 프론트엔드 UI/UX 구현
-          required: false
         - label: 테스트 코드 작성
-          required: false
         - label: 배포 및 문서 업데이트
-          required: false
 
   - type: input
     id: deadline
