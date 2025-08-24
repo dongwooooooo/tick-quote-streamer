@@ -4,10 +4,12 @@ server:
 spring:
   application:
     name: data-processor
+  
+  # Database Configuration
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:stock_streaming}
-    username: stock_user
-    password: stock_pass
+    url: ${DB_URL:jdbc:mysql://localhost:3306/stock_streaming?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:stock_user}
+    password: ${DB_PASSWORD:stock_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 20
@@ -15,29 +17,55 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+  
+  # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
-    database-platform: org.hibernate.dialect.MySQLDialect
+      ddl-auto: validate
     properties:
       hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
-        use_sql_comments: true
+        show_sql: false
+        jdbc:
+          batch_size: 20
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+  
+  # Kafka Configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: data-processor-group
-      auto-offset-reset: earliest
+      auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       enable-auto-commit: false
       max-poll-records: 500
+      fetch-min-size: 1
+      fetch-max-wait: 500
+      properties:
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 3
+      poll-timeout: 3000
+  
+  # Cache Configuration
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=10000,expireAfterWrite=60s
+      spec: maximumSize=10000,expireAfterWrite=300s,recordStats
+    cache-names:
+      - latestQuotes
+      - latestOrderbooks
+      - stockInfo
 
+# Management & Monitoring
 management:
   endpoints:
     web:
@@ -46,11 +74,33 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
+# Logging Configuration
 logging:
   level:
     org.example.dataprocessor: DEBUG
     org.springframework.kafka: INFO
-    org.springframework.orm.jpa: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application Specific Configuration
+app:
+  kafka:
+    topics:
+      quote-stream: quote-stream
+      orderbook-stream: orderbook-stream
+      notification-alerts: notification-alerts
+  
+  cache:
+    latest-data-ttl: 300 # seconds
+    max-cache-size: 10000
+  
+  batch:
+    size: 100
+    timeout: 5000 # milliseconds
