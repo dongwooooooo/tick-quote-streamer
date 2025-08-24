@@ -4,20 +4,31 @@ server:
 spring:
   application:
     name: sse-streamer
+  
+  # Database Configuration (최신 데이터 조회용)
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:stock_streaming}
-    username: stock_user
-    password: stock_pass
+    url: ${DB_URL:jdbc:mysql://localhost:3306/stock_streaming?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:stock_user}
+    password: ${DB_PASSWORD:stock_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
-      minimum-idle: 3
+      minimum-idle: 5
       connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
-    database-platform: org.hibernate.dialect.MySQLDialect
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        show_sql: false
+    open-in-view: false
+  
+  # Kafka Configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -25,12 +36,30 @@ spring:
       auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      enable-auto-commit: true
+      enable-auto-commit: false
+      max-poll-records: 100
+      fetch-min-size: 1
+      fetch-max-wait: 500
+      properties:
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 2
+      poll-timeout: 3000
+  
+  # Cache Configuration
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=50000,expireAfterWrite=30s
+      spec: maximumSize=5000,expireAfterWrite=60s,recordStats
+    cache-names:
+      - recentQuotes
+      - recentOrderbooks
+      - subscriptions
 
+# Management & Monitoring
 management:
   endpoints:
     web:
@@ -39,10 +68,33 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
+# Logging Configuration
 logging:
   level:
     org.example.ssestreamer: DEBUG
     org.springframework.kafka: INFO
+    org.springframework.web.servlet.mvc.method.annotation.SseEmitter: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application Specific Configuration
+app:
+  kafka:
+    topics:
+      quote-stream: quote-stream
+      orderbook-stream: orderbook-stream
+  
+  sse:
+    connection-timeout: 300000 # 5분
+    heartbeat-interval: 30000   # 30초
+    max-connections: 10000      # 최대 동시 연결 수
+    buffer-size: 1000          # 클라이언트별 버퍼 크기
+  
+  cache:
+    recent-data-ttl: 60        # 최근 데이터 캐시 TTL (초)
+    max-cache-size: 5000       # 최대 캐시 크기
