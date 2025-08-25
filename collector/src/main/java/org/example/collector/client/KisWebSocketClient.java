@@ -1,27 +1,24 @@
 package org.example.collector.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.example.collector.config.KisWebSocketProperties;
 import org.example.collector.dto.KisOrderbookData;
 import org.example.collector.dto.KisQuoteData;
 import org.example.collector.dto.KisSubscribeRequest;
 import org.example.collector.service.KafkaProducerService;
+import org.example.collector.service.KisAuthService;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.time.LocalDateTime;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
-import java.security.cert.X509Certificate;
 
 @Slf4j
 @Component
@@ -29,24 +26,44 @@ public class KisWebSocketClient {
 
     private final KisWebSocketProperties properties;
     private final KafkaProducerService kafkaProducerService;
+    private final KisAuthService kisAuthService;
     private final ObjectMapper objectMapper;
     private final ScheduledExecutorService scheduler;
+    private final SSLContext sslContext;
     
     private WebSocketClient webSocketClient;
     private boolean isConnected = false;
 
-    public KisWebSocketClient(KisWebSocketProperties properties, 
-                             KafkaProducerService kafkaProducerService,
-                             ObjectMapper objectMapper) {
+    public KisWebSocketClient(
+            KisWebSocketProperties properties,
+            KafkaProducerService kafkaProducerService,
+            KisAuthService kisAuthService,
+            ObjectMapper objectMapper,
+            @Nullable SSLContext sslContext) {
         this.properties = properties;
         this.kafkaProducerService = kafkaProducerService;
+        this.kisAuthService = kisAuthService;
         this.objectMapper = objectMapper;
+        this.sslContext = sslContext;
         this.scheduler = Executors.newSingleThreadScheduledExecutor();
     }
 
     public void connect() {
         try {
-            URI serverUri = new URI(properties.getWebsocket().getUrl());
+            // 먼저 인증 토큰과 승인키를 가져옴
+            String accessToken = kisAuthService.getAccessToken();
+            String approvalKey = kisAuthService.getWebSocketApprovalKey();
+            
+            if (accessToken == null || approvalKey == null) {
+                log.error("Failed to obtain KIS API authentication tokens");
+                scheduleReconnect();
+                return;
+            }
+            
+            URI serverUri = new URI(properties.getWebsocket().getDomain());
+            log.info("Connecting to KIS WebSocket server: {}", serverUri);
+            log.info("Using access token: {}...", accessToken.substring(0, Math.min(10, accessToken.length())));
+            log.info("Using approval key: {}...", approvalKey.substring(0, Math.min(10, approvalKey.length())));
             
             webSocketClient = new WebSocketClient(serverUri) {
                 @Override
@@ -75,10 +92,20 @@ public class KisWebSocketClient {
                     isConnected = false;
                 }
             };
+            
+            // KIS API 인증 헤더 추가
+            webSocketClient.addHeader("authorization", "Bearer " + accessToken);
+            webSocketClient.addHeader("appkey", properties.getApp().getKey());
+            webSocketClient.addHeader("appsecret", properties.getApp().getSecret());
+            webSocketClient.addHeader("custtype", "P"); // 개인고객 타입
+            webSocketClient.addHeader("tr_type", "1"); // 등록
+            webSocketClient.addHeader("content-type", "utf-8");
 
-            // SSL 설정 추가 (KIS API를 위한 인증서 검증 우회)
+            // SSL 설정 추가 (KIS API를 위한 인증서 검증 우회)  
             if (serverUri.getScheme().equals("wss")) {
                 setupSSLContext();
+                // WebSocket 클라이언트에 직접 SSL 설정 적용
+                webSocketClient.setSocketFactory(javax.net.ssl.SSLSocketFactory.getDefault());
             }
             
             webSocketClient.connect();
@@ -91,30 +118,17 @@ public class KisWebSocketClient {
     
     private void setupSSLContext() {
         try {
-            // 모든 인증서를 허용하는 TrustManager 생성 (개발/테스트용)
-            TrustManager[] trustAllCerts = new TrustManager[] {
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() { return null; }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) { }
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+            // Spring의 SSL 설정 사용
+            if (sslContext != null) {
+                log.info("Spring SSL 설정을 WebSocket 클라이언트에 적용");
+                if (webSocketClient != null) {
+                    webSocketClient.setSocketFactory(sslContext.getSocketFactory());
                 }
-            };
-            
-            // 모든 호스트명을 허용하는 HostnameVerifier 생성
-            HostnameVerifier allHostsValid = (hostname, session) -> true;
-            
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-            
-            // 글로벌 SSL 설정 (WebSocket 라이브러리용)
-            HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-            HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
-            
-            webSocketClient.setSocketFactory(sslContext.getSocketFactory());
-            
-            log.debug("SSL context and hostname verifier configured for KIS API connection");
+            } else {
+                log.info("기본 SSL 설정 사용 (표준 인증서 검증)");
+            }
         } catch (Exception e) {
-            log.warn("Failed to setup SSL context", e);
+            log.error("Failed to setup SSL for WebSocket", e);
         }
     }
 
@@ -130,9 +144,10 @@ public class KisWebSocketClient {
 
     private void subscribeToQuote(String stockCode) {
         try {
+            String approvalKey = kisAuthService.getWebSocketApprovalKey();
             KisSubscribeRequest request = KisSubscribeRequest.builder()
                     .header(KisSubscribeRequest.Header.builder()
-                            .approval_key(properties.getApp().getKey())
+                            .approval_key(approvalKey)
                             .custtype("P")
                             .tr_type("1")
                             .content_type("utf-8")
@@ -159,9 +174,10 @@ public class KisWebSocketClient {
             // 호가 구독을 위해 약간의 지연 추가
             Thread.sleep(500);
             
+            String approvalKey = kisAuthService.getWebSocketApprovalKey();
             KisSubscribeRequest request = KisSubscribeRequest.builder()
                     .header(KisSubscribeRequest.Header.builder()
-                            .approval_key(properties.getApp().getKey())
+                            .approval_key(approvalKey)
                             .custtype("P")
                             .tr_type("1")
                             .content_type("utf-8")

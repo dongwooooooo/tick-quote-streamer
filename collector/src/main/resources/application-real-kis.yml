@@ -1,0 +1,18 @@
+kis:
+  app:
+    key: ${KIS_APP_KEY}
+    secret: ${KIS_APP_SECRET}
+  rest:
+    domain: ${KIS_REST_DOMAIN}
+    oauth-access-url: ${KIS_WEBSOCKET_OAUTH_ACCESS_URL}
+    oauth-token-url: ${KIS_WEBSOCKET_OAUTH_TOKEN_URL}
+  websocket:
+    domain: ${KIS_WEBSOCKET_DOMAIN}
+    execution-url: ${KIS_WEBSOCKET_EXECUTION_URL}
+    quotation-url: ${KIS_WEBSOCKET_QUOTATION_URL}
+    trade-id: ${KIS_TRADE_ID}
+
+  ssl:
+    # 개발환경에서 KIS API 인증서 문제 해결
+    trust-all-certificates: true
+    verify-hostname: false
