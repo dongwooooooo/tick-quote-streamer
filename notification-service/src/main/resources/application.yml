@@ -4,32 +4,61 @@ server:
 spring:
   application:
     name: notification-service
+  
+  # Database Configuration
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:stock_streaming}
-    username: stock_user
-    password: stock_pass
+    url: ${DB_URL:jdbc:mysql://localhost:3306/stock_streaming?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:stock_user}
+    password: ${DB_PASSWORD:stock_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
-      minimum-idle: 3
+      minimum-idle: 5
       connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  # JPA Configuration
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
-    database-platform: org.hibernate.dialect.MySQLDialect
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        show_sql: false
+    open-in-view: false
+  
+  # Kafka Configuration
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: notification-service-group
-      auto-offset-reset: earliest
+      auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       enable-auto-commit: false
+      max-poll-records: 100
+      fetch-min-size: 1
+      fetch-max-wait: 500
+      properties:
+        session.timeout.ms: 30000
+        heartbeat.interval.ms: 3000
+        max.poll.interval.ms: 300000
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      enable-idempotence: true
+      retries: 3
+      batch-size: 16384
+      linger-ms: 5
+      compression-type: snappy
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 2
+      poll-timeout: 3000
 
+# Management & Monitoring
 management:
   endpoints:
     web:
@@ -38,10 +67,29 @@ management:
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
+# Logging Configuration
 logging:
   level:
     org.example.notificationservice: DEBUG
     org.springframework.kafka: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Application Specific Configuration
+app:
+  kafka:
+    topics:
+      quote-stream: quote-stream
+      orderbook-stream: orderbook-stream
+      notification-alerts: notification-alerts
+  
+  notification:
+    evaluation-interval: 1000    # 조건 평가 간격 (ms)
+    max-retry-attempts: 3        # 최대 재시도 횟수
+    retry-delay: 5000           # 재시도 간격 (ms)
+    batch-size: 100             # 배치 처리 크기
