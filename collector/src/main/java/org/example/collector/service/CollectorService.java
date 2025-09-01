@@ -34,4 +34,3 @@ public class CollectorService {
         return kisWebSocketClient.isConnected();
     }
 }
-
