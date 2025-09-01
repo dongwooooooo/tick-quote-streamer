@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS orderbook_levels (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     orderbook_id BIGINT NOT NULL COMMENT '호가 마스터 ID',
     order_type VARCHAR(4) NOT NULL COMMENT '호가 타입 (BID, ASK)',
-    price_level TINYINT NOT NULL COMMENT '호가 순서 (1~10)',
+    price_level INT NOT NULL COMMENT '호가 순서 (1~10)',
     price DECIMAL(15,2) NOT NULL COMMENT '호가',
     volume BIGINT NOT NULL COMMENT '호가 잔량',
 
@@ -69,15 +69,43 @@ CREATE TABLE IF NOT EXISTS notification_conditions (
     stock_code VARCHAR(10) NOT NULL COMMENT '종목코드',
     condition_type VARCHAR(20) NOT NULL COMMENT '조건타입 (PRICE_ABOVE, PRICE_BELOW, VOLUME_ABOVE)',
     target_value DECIMAL(15,2) NOT NULL COMMENT '목표값',
+    current_value DECIMAL(15,2) COMMENT '현재값 (조건 평가시 저장)',
     is_active BOOLEAN DEFAULT TRUE COMMENT '활성화 여부',
+    triggered_at TIMESTAMP NULL COMMENT '조건 트리거 시간',
+    description VARCHAR(255) COMMENT '조건 설명',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     
     FOREIGN KEY (stock_code) REFERENCES stocks(stock_code),
     INDEX idx_user_id (user_id),
     INDEX idx_stock_code_active (stock_code, is_active),
-    INDEX idx_condition_type (condition_type)
+    INDEX idx_condition_type (condition_type),
+    INDEX idx_is_active (is_active)
 ) COMMENT='사용자 알림 조건';
+
+-- 알림 이력 테이블
+CREATE TABLE IF NOT EXISTS notification_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL COMMENT '사용자ID',
+    stock_code VARCHAR(10) NOT NULL COMMENT '종목코드',
+    condition_id BIGINT NOT NULL COMMENT '알림 조건 ID',
+    condition_type VARCHAR(20) NOT NULL COMMENT '조건타입',
+    target_value DECIMAL(15,2) NOT NULL COMMENT '목표값',
+    triggered_value DECIMAL(15,2) NOT NULL COMMENT '트리거된 값',
+    message VARCHAR(500) NOT NULL COMMENT '알림 메시지',
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '전송 상태 (PENDING, SENT, FAILED, RETRY)',
+    retry_count INT DEFAULT 0 COMMENT '재시도 횟수',
+    sent_at TIMESTAMP NULL COMMENT '전송 완료 시간',
+    error_message VARCHAR(1000) COMMENT '오류 메시지',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (condition_id) REFERENCES notification_conditions(id),
+    FOREIGN KEY (stock_code) REFERENCES stocks(stock_code),
+    INDEX idx_user_id_created (user_id, created_at),
+    INDEX idx_stock_code_created (stock_code, created_at),
+    INDEX idx_condition_id (condition_id),
+    INDEX idx_status (status)
+) COMMENT='알림 전송 이력';
 
 -- 기본 종목 데이터 삽입
 INSERT IGNORE INTO stocks (stock_code, stock_name, market_type) VALUES

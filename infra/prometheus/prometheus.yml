@@ -1,0 +1,59 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Mock WebSocket Server
+  - job_name: 'mock-websocket'
+    static_configs:
+      - targets: ['host.docker.internal:8090']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+
+  # Quote Stream Collector
+  - job_name: 'collector'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+
+  # Data Processor
+  - job_name: 'data-processor'
+    static_configs:
+      - targets: ['data-processor:8082']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+
+  # SSE Streamer
+  - job_name: 'sse-streamer'
+    static_configs:
+      - targets: ['sse-streamer:8083']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+
+  # Notification Service
+  - job_name: 'notification-service'
+    static_configs:
+      - targets: ['notification-service:8084']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+
+  # Kafka JMX 메트릭 (나중에 추가 가능)
+  # - job_name: 'kafka'
+  #   static_configs:
+  #     - targets: ['kafka:9999']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
