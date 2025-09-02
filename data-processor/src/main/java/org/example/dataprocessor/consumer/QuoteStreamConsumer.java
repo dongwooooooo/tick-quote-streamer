@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.dataprocessor.dto.KisQuoteMessage;
 import org.example.dataprocessor.service.QuoteDataService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -19,6 +21,7 @@ public class QuoteStreamConsumer {
     
     private final QuoteDataService quoteDataService;
     private final ObjectMapper objectMapper;
+    private final MeterRegistry meterRegistry;
     
     @KafkaListener(
         topics = "${app.kafka.topics.quote-stream:quote-stream}",
@@ -33,6 +36,7 @@ public class QuoteStreamConsumer {
         @Header(KafkaHeaders.OFFSET) long offset,
         Acknowledgment acknowledgment
     ) {
+        Timer.Sample sample = Timer.start();
         try {
             log.debug("Received quote message - Topic: {}, Partition: {}, Key: {}, Offset: {}", 
                 topic, partition, key, offset);
@@ -47,6 +51,12 @@ public class QuoteStreamConsumer {
             acknowledgment.acknowledge();
             
             log.debug("Successfully processed quote message for stock: {}", quoteMessage.getTrKey());
+            meterRegistry.counter("data_processor_messages_total", "type", "quote", "symbol", quoteMessage.getTrKey()).increment();
+            sample.stop(Timer.builder("data_processor_processing_seconds")
+                .description("Quote message processing time")
+                .tag("type", "quote")
+                .tag("symbol", quoteMessage.getTrKey())
+                .register(meterRegistry));
             
         } catch (Exception e) {
             log.error("Error processing quote message - Topic: {}, Partition: {}, Key: {}, Offset: {}, Message: {}", 
@@ -54,6 +64,7 @@ public class QuoteStreamConsumer {
             
             // 에러 발생 시에도 일단 acknowledge (DLQ 처리는 추후 구현)
             acknowledgment.acknowledge();
+            meterRegistry.counter("data_processor_failures_total", "type", "quote").increment();
         }
     }
 }

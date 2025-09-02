@@ -128,8 +128,9 @@ public class KisAuthService {
             // Rate Limiting 오류 처리
             if (errorMessage != null && errorMessage.contains("EGW00133")) {
                 log.warn("Rate limiting detected (EGW00133). Token fetch will be retried later.");
-                // Rate Limiting 시 토큰 만료 시간을 1분 후로 설정하여 재시도 방지
-                tokenExpireTime = LocalDateTime.now().plusMinutes(1);
+                // Rate Limiting 시 토큰 만료 시간을 5분 후로 설정하여 재시도 방지
+                tokenExpireTime = LocalDateTime.now().plusMinutes(5);
+                log.warn("Next token fetch will be attempted at: {}", tokenExpireTime);
             } else {
                 log.error("Error fetching access token from {}: {}", properties.getRest().tokenAPIUrl(), errorMessage);
             }

@@ -21,9 +21,14 @@
 프로젝트 루트의 `.env` 파일을 수정하세요:
 
 ```bash
-# KIS API 설정 (발급받은 정보만 입력하면 됩니다)
-KIS_APP_KEY=발급받은_실제_앱키
-KIS_APP_SECRET=발급받은_실제_앱시크릿
+# KIS API 설정 (실전투자용)
+KIS_APP_KEY=발급받은_실전투자_앱키
+KIS_APP_SECRET=발급받은_실전투자_앱시크릿
+
+# KIS API 설정 (모의투자용 - 별도 발급 필요!)
+# Rate Limiting 방지를 위해 실전투자와 다른 App Key 사용
+KIS_MOCK_APP_KEY=발급받은_모의투자_앱키
+KIS_MOCK_APP_SECRET=발급받은_모의투자_앱시크릿
 
 # KIS API URL 설정
 # 모의투자 환경 (추천)
