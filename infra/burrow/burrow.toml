@@ -1,0 +1,44 @@
+[general]
+pidfile="burrow.pid"
+stdout-logfile="burrow.out"
+access-control-allow-origin="*"
+
+[logging]
+level="info"
+maxsize=100
+maxbackups=30
+maxage=10
+use-localtime=false
+use-compression=true
+
+[zookeeper]
+servers=["zookeeper:2181"]
+timeout=6
+root-path="/burrow"
+
+[kafka "local"]
+brokers=["kafka:29092"]
+client-profile="local"
+topic-refresh=120
+offset-refresh=30
+
+[client-profile "local"]
+client-id="burrow-local"
+kafka-version="2.8.0"
+
+[consumer "local"]
+client-profile="local"
+cluster="local"
+servers=["kafka:29092"]
+group-blacklist="^(console-consumer-|python-kafka-consumer-|quick-).*$"
+group-whitelist=""
+
+[storage "inmemory"]
+class-name="inmemory"
+workers=20
+intervals=15
+expire-group=604800
+min-distance=1
+
+[httpserver.default]
+address=":8000"

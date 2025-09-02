@@ -85,6 +85,38 @@ services:
     profiles:
       - monitoring
 
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: kafka-exporter
+    command:
+      - '--kafka.server=kafka:29092'
+    ports:
+      - "9308:9308"
+    networks:
+      - stock-network
+    depends_on:
+      - kafka
+    profiles:
+      - monitoring
+
+  burrow:
+    image: linkedin/burrow:latest
+    container_name: burrow
+    command:
+      - 'burrow'
+      - '--config-dir=/etc/burrow'
+    ports:
+      - "8000:8000"
+    networks:
+      - stock-network
+    volumes:
+      - ./infra/burrow/burrow.toml:/etc/burrow/burrow.toml:ro
+    depends_on:
+      - kafka
+      - zookeeper
+    profiles:
+      - monitoring
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -195,6 +227,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  mock-websocket:
+    build: ./mock-websocket
+    container_name: mock-websocket
+    ports:
+      - "8090:8090"
+    networks:
+      - stock-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8090/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
 volumes:
   kafka_data:
