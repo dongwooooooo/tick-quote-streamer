@@ -9,11 +9,13 @@ import org.example.collector.dto.KisQuoteData;
 import org.example.collector.dto.KisSubscribeRequest;
 import org.example.collector.service.KafkaProducerService;
 import org.example.collector.service.KisAuthService;
+import org.example.collector.service.StockService;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ public class KisWebSocketClient {
     private final KisWebSocketProperties properties;
     private final KafkaProducerService kafkaProducerService;
     private final KisAuthService kisAuthService;
+    private final StockService stockService;
     private final ObjectMapper objectMapper;
     private final ScheduledExecutorService scheduler;
     private final SSLContext sslContext;
@@ -38,11 +41,13 @@ public class KisWebSocketClient {
             KisWebSocketProperties properties,
             KafkaProducerService kafkaProducerService,
             KisAuthService kisAuthService,
+            StockService stockService,
             ObjectMapper objectMapper,
             @Nullable SSLContext sslContext) {
         this.properties = properties;
         this.kafkaProducerService = kafkaProducerService;
         this.kisAuthService = kisAuthService;
+        this.stockService = stockService;
         this.objectMapper = objectMapper;
         this.sslContext = sslContext;
         this.scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -70,7 +75,7 @@ public class KisWebSocketClient {
                 public void onOpen(ServerHandshake handshake) {
                     log.info("WebSocket connection opened to KIS server: {}", serverUri);
                     isConnected = true;
-                    startSubscriptions();
+                    startSubscriptions(properties.getTargetStockNames());
                 }
 
                 @Override
@@ -132,10 +137,12 @@ public class KisWebSocketClient {
         }
     }
 
-    private void startSubscriptions() {
+    private void startSubscriptions(List<String> stockNames) {
         // 구독 시작을 약간 지연
+
+        List<String> stockCodes = stockService.getTargetStockCodes(stockNames);
         scheduler.schedule(() -> {
-            for (String stockCode : properties.getTargetStocks()) {
+            for (String stockCode : stockCodes) {
                 subscribeToQuote(stockCode);
                 subscribeToOrderbook(stockCode);
             }
