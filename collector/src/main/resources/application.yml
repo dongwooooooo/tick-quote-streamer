@@ -16,6 +16,35 @@ spring:
       linger-ms: 5
       compression-type: snappy
 
+  # Database Configuration
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/stock_streaming?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:stock_user}
+    password: ${DB_PASSWORD:stock_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        show_sql: false
+        jdbc:
+          batch_size: 20
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+
 management:
   endpoints:
     web:
